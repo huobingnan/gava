@@ -247,9 +247,8 @@ func (this *ConstantClassInfo) Name() string {
 
 // 名称和类型描述
 type ConstantNameAndTypeInfo struct {
-	cp              ConstantPool //常量池
-	nameIndex       uint16       // 名称索引
-	descriptorIndex uint16       // 描述索引
+	nameIndex       uint16 // 名称索引
+	descriptorIndex uint16 // 描述索引
 }
 
 func (this *ConstantNameAndTypeInfo) ReadInformation(reader *JavaByteCodeReader) {
@@ -273,7 +272,7 @@ func (this *ConstantMemberrefInfo) ClassName() string {
 	return this.cp.getClassName(this.classIndex)
 }
 
-func (this *ConstantMemberrefInfo) NameAndDescriptor() string {
+func (this *ConstantMemberrefInfo) NameAndDescriptor() (string, string) {
 	return this.cp.getNameAndType(this.nameAndTypeIndex)
 }
 
@@ -287,7 +286,7 @@ func (this *ConstantFieldrefInfo) ReadInformation(reader *JavaByteCodeReader) {
 
 func (this *ConstantFieldrefInfo) ClassName() string { return this.cp.getClassName(this.classIndex) }
 
-func (this *ConstantFieldrefInfo) NameAndDescriptor() string {
+func (this *ConstantFieldrefInfo) NameAndDescriptor() (string, string) {
 	return this.cp.getNameAndType(this.nameAndTypeIndex)
 }
 
@@ -301,7 +300,7 @@ func (this *ConstantMethodrefInfo) ReadInformation(reader *JavaByteCodeReader) {
 
 func (this *ConstantMethodrefInfo) ClassName() string { return this.cp.getClassName(this.classIndex) }
 
-func (this *ConstantMethodrefInfo) NameAndDescriptor() string {
+func (this *ConstantMethodrefInfo) NameAndDescriptor() (string, string) {
 	return this.cp.getNameAndType(this.nameAndTypeIndex)
 }
 
@@ -317,8 +316,39 @@ func (this *ConstantInterfaceMethodrefInfo) ClassName() string {
 	return this.cp.getClassName(this.classIndex)
 }
 
-func (this *ConstantInterfaceMethodrefInfo) NameAndDescriptor() string {
+func (this *ConstantInterfaceMethodrefInfo) NameAndDescriptor() (string, string) {
 	return this.cp.getNameAndType(this.nameAndTypeIndex)
+}
+
+// MethodType 常量信息 JSE 1.7 引入
+type ConstantMethodTypeInfo struct {
+	descriptorIndex uint16
+}
+
+func (this *ConstantMethodTypeInfo) ReadInformation(reader *JavaByteCodeReader) {
+	this.descriptorIndex = reader.ReadUint16()
+}
+
+// ConstantMethodHandle 常量信息 JSE 1.7引入
+type ConstantMethodHandleInfo struct {
+	referenceKind  uint8
+	referenceIndex uint16
+}
+
+func (this *ConstantMethodHandleInfo) ReadInformation(reader *JavaByteCodeReader) {
+	this.referenceKind = reader.ReadUint8()
+	this.referenceIndex = reader.ReadUint16()
+}
+
+// ConstantInvokeDynamic 常量信息 JSE1.7 引入
+type ConstantInvokeDynamicInfo struct {
+	bootstrapMethodAttrIndex uint16
+	nameAndTypeIndex         uint16
+}
+
+func (this *ConstantInvokeDynamicInfo) ReadInformation(reader *JavaByteCodeReader) {
+	this.bootstrapMethodAttrIndex = reader.ReadUint16()
+	this.nameAndTypeIndex = reader.ReadUint16()
 }
 
 // 常量池
@@ -329,18 +359,20 @@ type ConstantPool struct {
 //region 常量池私有函数
 
 func (this *ConstantPool) getUtf8(stringIndex uint16) string {
-	// TODO
-	return ""
+	var utf8 = this.informations[stringIndex].(*ConstantUtf8Info)
+	return utf8.String()
 }
 
 func (this *ConstantPool) getClassName(classIndex uint16) string {
-	// TODO
-	return ""
+	var class = this.informations[classIndex].(*ConstantClassInfo)
+	return class.Name()
 }
 
-func (this *ConstantPool) getNameAndType(descriptorIndex uint16) string {
-	// TODO
-	return ""
+func (this *ConstantPool) getNameAndType(descriptorIndex uint16) (string, string) {
+	var nameAndType = this.informations[descriptorIndex].(*ConstantNameAndTypeInfo)
+	var name = this.getUtf8(nameAndType.nameIndex)
+	var t = this.getUtf8(nameAndType.descriptorIndex)
+	return name, t
 }
 
 //endregion
@@ -441,8 +473,12 @@ func (this *JavaClass) InterfaceNames() []string { return []string{} }
 //#region JavaClass 解析字节码内容的私有方法，这些方法均可以安全的进行panic
 
 // 读取字节码，构造Class对象
+// 字节码的排列顺序
+// 魔数 -> 次版本号 -> 主版本号 -> 常量池 -> 类访问标志 -> 两个uint16类型的常量池索引（本类和超类）
 func (this *JavaClass) read(reader *JavaByteCodeReader) {
-
+	this.readAndCheckMagicNumber(reader) // 检查魔数
+	this.readAndCheckVersion(reader)     // 检查版本号
+	this.readConstantPool(reader)        // 读取常量池信息
 }
 
 // 读取并检查魔数
@@ -459,6 +495,8 @@ func (this *JavaClass) readAndCheckVersion(reader *JavaByteCodeReader) {
 	this.minorVersion = reader.ReadUint16() // 首先出现的是副版本号
 	this.majorVersion = reader.ReadUint16() // 其次是主版本号
 
+	debug("minor version => ", this.minorVersion)
+	debug("major version => ", this.majorVersion)
 	switch this.majorVersion {
 	case 45:
 		return
@@ -468,6 +506,66 @@ func (this *JavaClass) readAndCheckVersion(reader *JavaByteCodeReader) {
 		}
 	}
 	panic("java.lang.UnsupportedClassVersionError")
+}
+
+// 读取解析常量池信息
+func (this *JavaClass) readConstantPool(reader *JavaByteCodeReader) {
+	var constantPoolSize = reader.ReadUint16()
+	var constantPool = new(ConstantPool)
+	var informations = make([]ConstantInformation, constantPoolSize)
+	// 开始解析常量池
+	// 一定注意，常量池的索引是从1开始的
+	for i := 1; i < int(constantPoolSize); i++ {
+		var tag = reader.ReadUint8() // 获取常量的tag
+		var constantInformation ConstantInformation
+		switch tag {
+		case CONSTANT_Integer:
+			constantInformation = &ConstantIntegerInfo{}
+		case CONSTANT_Double:
+			constantInformation = &ConstantDoubleInfo{}
+		case CONSTANT_Float:
+			constantInformation = &ConstantFloatInfo{}
+		case CONSTANT_Long:
+			constantInformation = &ConstantLongInfo{}
+		case CONSTANT_Utf8:
+			constantInformation = &ConstantUtf8Info{}
+		case CONSTANT_String:
+			constantInformation = &ConstantStringInfo{cp: *constantPool}
+		case CONSTANT_Class:
+			constantInformation = &ConstantClassInfo{cp: *constantPool}
+		case CONSTANT_Fieldref:
+			constantInformation = &ConstantFieldrefInfo{ConstantMemberrefInfo{cp: *constantPool}}
+		case CONSTANT_Methodref:
+			constantInformation = &ConstantMethodrefInfo{ConstantMemberrefInfo{cp: *constantPool}}
+		case CONSTANT_InterfaceMethodref:
+			constantInformation = &ConstantInterfaceMethodrefInfo{ConstantMemberrefInfo{cp: *constantPool}}
+		case CONSTANT_NameAndType:
+			constantInformation = &ConstantNameAndTypeInfo{}
+		case CONSTANT_MethodType:
+			constantInformation = &ConstantMethodTypeInfo{}
+		case CONSTANT_MethodHandle:
+			constantInformation = &ConstantMethodTypeInfo{}
+		case CONSTANT_InvokeDynamic:
+			constantInformation = &ConstantInvokeDynamicInfo{}
+		default:
+			panic("java.lang.ClassFormatError! => constant pool")
+
+		}
+		constantInformation.ReadInformation(reader) // 从字节码中读取信息
+		informations[i] = constantInformation
+		// http://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.4.5
+		// All 8-byte constants take up two entries in the constant_pool table of the class file.
+		// If a CONSTANT_Long_info or CONSTANT_Double_info structure is the item in the constant_pool
+		// table at index n, then the next usable item in the pool is located at index n+2.
+		// The constant_pool index n+1 must be valid but is considered unusable.
+		switch informations[i].(type) {
+		case *ConstantLongInfo, *ConstantDoubleInfo:
+			i++
+		}
+	}
+	constantPool.informations = informations
+	this.constantPool = *constantPool
+
 }
 
 //#endregion

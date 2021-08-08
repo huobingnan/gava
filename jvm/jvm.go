@@ -1,9 +1,29 @@
 package jvm
 
+//lint:file-ignore ST1006 MYSTYLE
+//lint:file-ignore U1000 MYSTYLE
 import (
 	"flag"
 	"fmt"
+	"log"
+	"os"
 )
+
+// 日志配置
+const __DEBUG_ENABLE__ = true
+
+var debug func(v ...interface{})
+
+var info = log.New(os.Stdout, "[INFO] ", log.LstdFlags).Println
+var fatal = log.New(os.Stderr, "[ERROR] ", log.LstdFlags).Fatal // 会终止程序运行
+
+func init() {
+	if __DEBUG_ENABLE__ {
+		debug = log.New(os.Stdout, "[DEBUG] ", log.LstdFlags).Println
+	} else {
+		debug = func(v ...interface{}) {}
+	}
+}
 
 // gava虚拟机命令行参数
 const __HELP_FLAG_USAGE__ = "help will show the gava usage"

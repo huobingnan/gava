@@ -6,17 +6,12 @@ package jvm
 
 import (
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
 const __OS_PATH_SEPARATOR__ = string(os.PathListSeparator) // 系统路径分隔符
-
-// 日志配置
-//var info = log.New(os.Stdout, "[jvm/classpath.go] ", log.LstdFlags).Println
-var fatal = log.New(os.Stderr, "[jvm/classpath.go] ", log.LstdFlags).Fatal
 
 type ClassEntry interface {
 	ReadClass(classQulifierName string) ([]byte, ClassEntry, error)
