@@ -19,5 +19,6 @@ func init() {
 	if __DEBUG_ENABLE__ {
 		// 开启debug
 		debug = log.New(os.Stdout, "[DEBUG] ", log.LstdFlags).Println
+		debug("DEBUG MODE ENABLED")
 	}
 }

@@ -88,6 +88,18 @@ const (
 	CONSTANT_InvokeDynamic      = 18
 )
 
+// JVM预定义属性名称
+const (
+	CODE                 = "Code"
+	CONSTANT_VALUE       = "ConstantValue"
+	DEPRECATED           = "Deprecated"
+	EXCEPTIONS           = "Exceptions"
+	LINE_NUMBER_TABLE    = "LineNumberTable"
+	LOCAL_VARIABLE_TABLE = "LocalVariableTable"
+	SOURCE_FILE          = "SourceFile"
+	SYNTHETIC            = "Synthetic"
+)
+
 // 常量信息接口定义
 type ConstantInformation interface {
 	ReadInformation(reader *JavaByteCodeReader)
@@ -383,15 +395,7 @@ type MemberInformation struct {
 	accessFlags     uint16       // 访问标识符
 	nameIndex       uint16
 	descriptorIndex uint16
-	attributes      []AttributeInformation
-}
-
-//#region MemberInformation 读取常量池有关操作函数
-
-// 读取属性信息
-func readAttribute(reader *JavaByteCodeReader, cp ConstantPool) []AttributeInformation {
-	//TODO
-	return []AttributeInformation{}
+	attributes      []*Attribute
 }
 
 // 读取成员信息
@@ -405,8 +409,203 @@ func readMember(reader *JavaByteCodeReader, cp ConstantPool) *MemberInformation 
 		accessFlags:     reader.ReadUint16(),
 		nameIndex:       reader.ReadUint16(),
 		descriptorIndex: reader.ReadUint16(),
-		attributes:      readAttribute(reader, cp),
+		attributes:      readAttributes(reader, cp),
 	}
+}
+
+//#region MemberInformation 读取常量池有关操作函数
+
+// 属性信息
+type Attribute interface {
+	ReadAttribute(reader *JavaByteCodeReader)
+}
+
+// 这个属性十分重要, 顶层属性，可以套娃
+type CodeAttribute struct {
+	cp              ConstantPool
+	name            string            // 属性名称
+	length          uint32            // 属性值的长度
+	maxStack        uint16            // 最大栈深度
+	maxLocals       uint16            // 局部变量表的最大值
+	code            []byte            // 字节码
+	exceptionTables []*ExceptionTable // 异常表
+	attributes      []*Attribute      // 属性表
+}
+
+// 代码异常表
+type ExceptionTable struct {
+	startPC   uint16 // 程序计数器起始位置
+	endPC     uint16 // 程序计数器结束位置
+	handlerPC uint16 // 处理程序段起始位置
+	catchType uint16 // 捕获的类型
+}
+
+func (this *CodeAttribute) ReadAttribute(reader *JavaByteCodeReader) {
+	this.maxStack = reader.ReadUint16()    // 首先是最大栈深度
+	this.maxLocals = reader.ReadUint16()   // 最大变量表
+	var codeSize = reader.ReadUint32()     // 字节码长度
+	this.code = reader.ReadBytes(codeSize) // 读取字节码
+	// 读取exceptions table
+	var exceptionTableSize = reader.ReadUint16()
+	this.exceptionTables = make([]*ExceptionTable, exceptionTableSize)
+	for idx := range this.exceptionTables {
+		this.exceptionTables[idx] = &ExceptionTable{
+			startPC:   reader.ReadUint16(),
+			endPC:     reader.ReadUint16(),
+			handlerPC: reader.ReadUint16(),
+			catchType: reader.ReadUint16(),
+		}
+	}
+	this.attributes = readAttributes(reader, this.cp) // 套娃读取
+}
+
+type ConstantValueAttribute struct {
+	name               string
+	length             uint32
+	constantValueIndex uint16
+}
+
+func (this *ConstantValueAttribute) ReadAttribute(reader *JavaByteCodeReader) {
+	this.constantValueIndex = reader.ReadUint16()
+}
+
+type DeprecatedAttribute struct {
+	name   string
+	length uint32
+}
+
+//do noting
+func (this *DeprecatedAttribute) ReadAttribute(reader *JavaByteCodeReader) {}
+
+// 异常属性
+type ExceptionsAttribute struct {
+	name                string
+	length              uint32
+	exceptionIndexTable []uint16
+}
+
+func (this *ExceptionsAttribute) ReadAttribute(reader *JavaByteCodeReader) {
+	this.exceptionIndexTable = reader.ReadUint16s()
+}
+
+func (this *ExceptionsAttribute) ExceptionsIndexTable() []uint16 { return this.exceptionIndexTable }
+
+// 与异常处理有关
+type LineNumberTableAttribute struct {
+	name            string
+	length          uint32
+	lineNumberTable []*LineNumberTableEntry
+}
+
+type LineNumberTableEntry struct {
+	startPC    uint16
+	lineNumber uint16
+}
+
+func (this *LineNumberTableAttribute) ReadAttribute(reader *JavaByteCodeReader) {
+	var length = reader.ReadUint16()
+	this.lineNumberTable = make([]*LineNumberTableEntry, length)
+	for idx := range this.lineNumberTable {
+		this.lineNumberTable[idx] = &LineNumberTableEntry{
+			startPC:    reader.ReadUint16(),
+			lineNumber: reader.ReadUint16(),
+		}
+	}
+}
+
+type LocalVariableTableAttribute struct {
+	name               string
+	length             uint32
+	localVariableTable []*LocalVariableTableEntry
+}
+
+type LocalVariableTableEntry struct {
+	startPc         uint16
+	length          uint16
+	nameIndex       uint16
+	descriptorIndex uint16
+	index           uint16
+}
+
+func (this *LocalVariableTableAttribute) ReadAttribute(reader *JavaByteCodeReader) {
+	var localVariableTableLength = reader.ReadUint16()
+	this.localVariableTable = make([]*LocalVariableTableEntry, localVariableTableLength)
+	for i := range this.localVariableTable {
+		this.localVariableTable[i] = &LocalVariableTableEntry{
+			startPc:         reader.ReadUint16(),
+			length:          reader.ReadUint16(),
+			nameIndex:       reader.ReadUint16(),
+			descriptorIndex: reader.ReadUint16(),
+			index:           reader.ReadUint16(),
+		}
+	}
+}
+
+type SourceFileAttribute struct {
+	cp              ConstantPool
+	name            string
+	length          uint32
+	sourceFileIndex uint16
+}
+
+func (this *SourceFileAttribute) ReadAttribute(reader *JavaByteCodeReader) {
+	this.sourceFileIndex = reader.ReadUint16()
+}
+
+func (this *SourceFileAttribute) FileName() string { return this.cp.getUtf8(this.sourceFileIndex) }
+
+type SyntheticAttribute struct {
+	name   string
+	length uint32
+}
+
+// do noting
+func (this *SyntheticAttribute) ReadAttribute(reader *JavaByteCodeReader) {}
+
+type UnparsedAttribute struct {
+	name        string
+	length      uint32
+	information []byte
+}
+
+func (this *UnparsedAttribute) ReadAttribute(reader *JavaByteCodeReader) {
+	this.information = reader.ReadBytes(this.length)
+}
+
+// 读取属性信息表
+func readAttributes(reader *JavaByteCodeReader, cp ConstantPool) []*Attribute {
+	var attributeCount = reader.ReadUint16() // 2字节表示信息长度
+	var attributes = make([]*Attribute, attributeCount)
+	for idx := range attributes {
+		// 构造属性信息表
+		var attributeNameIndex = reader.ReadUint16()
+		var attributeName = cp.getUtf8(attributeNameIndex)
+		var attributeLength = reader.ReadUint32() // 信息长度有多少
+		var attribute Attribute
+		switch attributeName {
+		case CODE:
+			attribute = &CodeAttribute{cp: cp, name: attributeName, length: attributeLength}
+		case CONSTANT_VALUE:
+			attribute = &ConstantValueAttribute{name: attributeName, length: attributeLength}
+		case DEPRECATED:
+			attribute = &DeprecatedAttribute{name: attributeName, length: attributeLength}
+		case EXCEPTIONS:
+			attribute = &ExceptionsAttribute{name: attributeName, length: attributeLength}
+		case LINE_NUMBER_TABLE:
+			attribute = &LineNumberTableAttribute{name: attributeName, length: attributeLength}
+		case LOCAL_VARIABLE_TABLE:
+			attribute = &LocalVariableTableAttribute{name: attributeName, length: attributeLength}
+		case SOURCE_FILE:
+			attribute = &SourceFileAttribute{cp: cp, name: attributeName, length: attributeLength}
+		case SYNTHETIC:
+			attribute = &SyntheticAttribute{name: attributeName, length: attributeLength}
+		default:
+			attribute = &UnparsedAttribute{name: attributeName, length: attributeLength}
+		}
+		attribute.ReadAttribute(reader)
+		attributes[idx] = &attribute
+	}
+	return attributes
 }
 
 // 读取所有的成员信息
@@ -421,22 +620,19 @@ func readMembers(reader *JavaByteCodeReader, cp ConstantPool) []*MemberInformati
 
 //#endregion
 
-// 属性信息
-type AttributeInformation struct{}
-
 // Java Class对象
 type JavaClass struct {
-	magic          uint32                  // Java字节码的魔数
-	minorVersion   uint16                  // 字节码副版本号
-	majorVersion   uint16                  // 字节码主版本号
-	constantPool   ConstantPool            // 常量池
-	accessFlags    uint16                  // 访问标志符
-	thisClass      uint16                  // 当前Class
-	superClass     uint16                  // 超类
-	interfaceClass []uint16                // 接口类
-	fields         []*MemberInformation    // 字段信息集合
-	methods        []*MemberInformation    // 方法信息集合
-	attributes     []*AttributeInformation // 属性信息集合
+	magic          uint32               // Java字节码的魔数
+	minorVersion   uint16               // 字节码副版本号
+	majorVersion   uint16               // 字节码主版本号
+	constantPool   ConstantPool         // 常量池
+	accessFlags    uint16               // 访问标志符
+	thisClass      uint16               // 当前Class
+	superClass     uint16               // 超类
+	interfaceClass []uint16             // 接口类
+	fields         []*MemberInformation // 字段信息集合
+	methods        []*MemberInformation // 方法信息集合
+	attributes     []*Attribute         // 属性信息集合
 }
 
 //#region JavaClass getter & accessor
@@ -476,9 +672,17 @@ func (this *JavaClass) InterfaceNames() []string { return []string{} }
 // 字节码的排列顺序
 // 魔数 -> 次版本号 -> 主版本号 -> 常量池 -> 类访问标志 -> 两个uint16类型的常量池索引（本类和超类）
 func (this *JavaClass) read(reader *JavaByteCodeReader) {
-	this.readAndCheckMagicNumber(reader) // 检查魔数
-	this.readAndCheckVersion(reader)     // 检查版本号
-	this.readConstantPool(reader)        // 读取常量池信息
+	this.readAndCheckMagicNumber(reader)                        // 检查魔数
+	this.readAndCheckVersion(reader)                            // 检查版本号
+	this.readConstantPool(reader)                               // 读取常量池信息
+	this.accessFlags = reader.ReadUint16()                      // 读取类的访问标识符
+	this.thisClass = reader.ReadUint16()                        // 本类
+	this.superClass = reader.ReadUint16()                       // 超类
+	this.interfaceClass = reader.ReadUint16s()                  // 读取接口信息
+	this.fields = readMembers(reader, this.constantPool)        // 读取字段
+	this.methods = readMembers(reader, this.constantPool)       // 读取方法
+	this.attributes = readAttributes(reader, this.constantPool) // 读取属性
+
 }
 
 // 读取并检查魔数
@@ -565,7 +769,6 @@ func (this *JavaClass) readConstantPool(reader *JavaByteCodeReader) {
 	}
 	constantPool.informations = informations
 	this.constantPool = *constantPool
-
 }
 
 //#endregion
