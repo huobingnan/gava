@@ -12,15 +12,11 @@ import (
 	"strings"
 )
 
-const OS_PATH_SEPARATOR = string(os.PathListSeparator) // 系统路径分隔符
+const __OS_PATH_SEPARATOR__ = string(os.PathListSeparator) // 系统路径分隔符
 
 // 日志配置
-var info = log.New(os.Stdout, "[jvm/classpath.go] ", log.LstdFlags).Println
+//var info = log.New(os.Stdout, "[jvm/classpath.go] ", log.LstdFlags).Println
 var fatal = log.New(os.Stderr, "[jvm/classpath.go] ", log.LstdFlags).Fatal
-
-func init() {
-	info("OS_PATH_SEPARATOR => ", OS_PATH_SEPARATOR)
-}
 
 type ClassEntry interface {
 	ReadClass(classQulifierName string) ([]byte, ClassEntry, error)
@@ -44,7 +40,7 @@ func (this *CompositeClassEntry) String() string {
 }
 
 func newCompositeClassEntry(classpath string) *CompositeClassEntry {
-	var entrysPath = strings.Split(classpath, OS_PATH_SEPARATOR)
+	var entrysPath = strings.Split(classpath, __OS_PATH_SEPARATOR__)
 	if len(entrysPath) <= 1 {
 		fatal("invalid system path separator")
 	}
@@ -139,7 +135,7 @@ func newCompressedClassEntry(classpath string) *CompressedClassEntry {
 //+--------------------------------- Package functions ------------------------------------+
 
 func NewClassEntry(classpath string) ClassEntry {
-	if strings.Contains(classpath, OS_PATH_SEPARATOR) {
+	if strings.Contains(classpath, __OS_PATH_SEPARATOR__) {
 		return newCompositeClassEntry(classpath)
 	} else if strings.HasSuffix(classpath, "jar") || strings.HasSuffix(classpath, "zip") {
 		return newCompressedClassEntry(classpath)

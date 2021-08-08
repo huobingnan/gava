@@ -6,9 +6,9 @@ import (
 )
 
 // gava虚拟机命令行参数
-const HELP_FLAG_USAGE = "help will show the gava usage"
-const VERSION_FLAG_USAGE = "version will show the gava version"
-const CLASSPATH_FLAG_USAGE = "classpath will allow you to set gava virtual machine class path"
+const __HELP_FLAG_USAGE__ = "help will show the gava usage"
+const __VERSION_FLAG_USAGE__ = "version will show the gava version"
+const __CLASSPATH_FLAG_USAGE__ = "classpath will allow you to set gava virtual machine class path"
 
 type Command struct {
 	Version         bool     // 是否显示版本号
@@ -27,10 +27,10 @@ func gavaUsage() {
 func ParseCommand() Command {
 	var command = Command{}
 	flag.Usage = gavaUsage
-	flag.BoolVar(&command.Help, "help", false, HELP_FLAG_USAGE)
-	flag.BoolVar(&command.Version, "version", false, VERSION_FLAG_USAGE)
-	flag.StringVar(&command.ClassPath, "classpath", "", CLASSPATH_FLAG_USAGE)
-	flag.StringVar(&command.ClassPath, "cp", "", CLASSPATH_FLAG_USAGE)
+	flag.BoolVar(&command.Help, "help", false, __HELP_FLAG_USAGE__)
+	flag.BoolVar(&command.Version, "version", false, __VERSION_FLAG_USAGE__)
+	flag.StringVar(&command.ClassPath, "classpath", "", __CLASSPATH_FLAG_USAGE__)
+	flag.StringVar(&command.ClassPath, "cp", "", __CLASSPATH_FLAG_USAGE__)
 	flag.Parse()
 	var args = flag.Args()
 	if len(args) > 0 {
