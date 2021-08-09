@@ -6,17 +6,24 @@ import "math"
 // JVM 运行时
 
 // Java与Go类型的对照
-type JByte int8
-type JShort int16
-type JChar uint16
-type JInt int32
-type JLong int64
-type JFloat float32
-type JDouble float64
-type JBoolean bool
+type JByte = int8
+type JShort = int16
+type JChar = uint16
+type JInt = int32
+type JLong = int64
+type JFloat = float32
+type JDouble = float64
+type JBoolean = bool
+
+//#region Java Class Object
+type JClass struct {
+}
+
+//#endregion
 
 //#region Java Object
 type JObject struct {
+	class *JClass // 指向Class
 }
 
 //#endregion
