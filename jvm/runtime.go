@@ -35,6 +35,9 @@ func NewJvmStackFrame(maxLocals uint, maxStack uint) *JvmStackFrame {
 		next:         nil,
 	}
 }
+func (this *JvmStackFrame) OperandStack() *JvmOperandStack { return this.operandStack }
+func (this *JvmStackFrame) LocalVars() JvmLocalVars        { return this.localVars }
+func (this *JvmStackFrame) Next() *JvmStackFrame           { return this.next }
 
 type JvmSlot struct {
 	number    int32    // 存放数字
@@ -171,6 +174,16 @@ func (this *JvmOperandStack) PopReference() *JObject {
 	var res = this.slots[this.top].reference
 	this.slots[this.top].reference = nil // 使GC回收
 	return res
+}
+
+func (this *JvmOperandStack) PushSlot(s JvmSlot) {
+	this.slots[this.top] = s
+	this.top++
+}
+
+func (this *JvmOperandStack) PopSlot() JvmSlot {
+	this.top--
+	return this.slots[this.top]
 }
 
 //#endregion

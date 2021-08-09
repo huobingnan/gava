@@ -611,7 +611,7 @@ func readMembers(reader *JavaByteCodeReader, cp ConstantPool) []*MemberInformati
 
 //#endregion
 
-// Java Class对象
+// Java Class 文件
 type JavaClass struct {
 	magic          uint32               // Java字节码的魔数
 	minorVersion   uint16               // 字节码副版本号
