@@ -10,15 +10,6 @@ import (
 //lint:file-ignore ST1006  MYSTYLE
 //lint:file-ignore U1000  MYSTYLE
 
-// Java与Go类型的对照
-type JBYTE int8
-type JSHORT int16
-type JCHAR uint16
-type JINT int32
-type JLONG int64
-type JFLOAT float32
-type JDOUBLE float64
-
 // Java字节码读取
 type JavaByteCodeReader struct {
 	bytecode []byte
@@ -110,44 +101,44 @@ type ConstantInformation interface {
 // 整型的常量信息（不仅仅用来存储int）
 // 也用来存储比int更小的short，char，boolean，byte等
 type ConstantIntegerInfo struct {
-	intValue JINT
+	intValue JInt
 }
 
 func (this *ConstantIntegerInfo) ReadInformation(reader *JavaByteCodeReader) {
 	var val = reader.ReadUint32()
-	this.intValue = JINT(val)
+	this.intValue = JInt(val)
 }
 
 // 浮点数常量信息
 type ConstantFloatInfo struct {
-	floatValue JFLOAT
+	floatValue JFloat
 }
 
 func (this *ConstantFloatInfo) ReadInformation(reader *JavaByteCodeReader) {
 	var fbits = reader.ReadUint32()
 	var float = math.Float32frombits(fbits)
-	this.floatValue = JFLOAT(float)
+	this.floatValue = JFloat(float)
 }
 
 // 长整形常量信息
 type ConstantLongInfo struct {
-	longValue JLONG
+	longValue JLong
 }
 
 func (this *ConstantLongInfo) ReadInformation(reader *JavaByteCodeReader) {
 	var bits = reader.ReadUint64()
-	this.longValue = JLONG(bits)
+	this.longValue = JLong(bits)
 }
 
 // 双精度浮点型常量信息
 type ConstantDoubleInfo struct {
-	doubleValue JDOUBLE
+	doubleValue JDouble
 }
 
 func (this *ConstantDoubleInfo) ReadInformation(reader *JavaByteCodeReader) {
 	var bits = reader.ReadUint64()
 	var double = math.Float64frombits(bits)
-	this.doubleValue = JDOUBLE(double)
+	this.doubleValue = JDouble(double)
 }
 
 // Utf8字符串常量信息. Class文件中的UTF8字串采用了MUTF8的编码格式，这里在解码时，需要使用MUTF8
@@ -425,7 +416,7 @@ type CodeAttribute struct {
 	cp              ConstantPool
 	name            string            // 属性名称
 	length          uint32            // 属性值的长度
-	maxStack        uint16            // 最大栈深度
+	maxStack        uint16            // 最大操作数栈深度
 	maxLocals       uint16            // 局部变量表的最大值
 	code            []byte            // 字节码
 	exceptionTables []*ExceptionTable // 异常表
