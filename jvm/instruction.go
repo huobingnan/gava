@@ -1,5 +1,7 @@
 package jvm
 
+import "math"
+
 //lint:file-ignore ST1006 MY
 
 type InstructionCodeReader struct {
@@ -410,4 +412,207 @@ func (this *SWAP) Execute(frame *JvmStackFrame) {
 	var slot2 = frame.operandStack.PopSlot()
 	frame.operandStack.PushSlot(slot1)
 	frame.operandStack.PushSlot(slot2)
+}
+
+// JVM数学指令实现
+// 加法指令
+type IADD struct{ NoOperandsInstruction }
+type LADD struct{ NoOperandsInstruction }
+type FADD struct{ NoOperandsInstruction }
+type DADD struct{ NoOperandsInstruction }
+
+// 减法指令
+type ISUB struct{ NoOperandsInstruction }
+type LSUB struct{ NoOperandsInstruction }
+type FSUB struct{ NoOperandsInstruction }
+type DSUB struct{ NoOperandsInstruction }
+
+// 乘法指令
+type IMUL struct{ NoOperandsInstruction }
+type LMUL struct{ NoOperandsInstruction }
+type FMUL struct{ NoOperandsInstruction }
+type DMUL struct{ NoOperandsInstruction }
+
+// 除法指令
+type IDIV struct{ NoOperandsInstruction }
+type LDIV struct{ NoOperandsInstruction }
+type FDIV struct{ NoOperandsInstruction }
+type DDIV struct{ NoOperandsInstruction }
+
+// 求余数指令
+type IREM struct{ NoOperandsInstruction }
+type LREM struct{ NoOperandsInstruction }
+type FREM struct{ NoOperandsInstruction }
+type DREM struct{ NoOperandsInstruction }
+
+//取反指令
+type INEG struct{ NoOperandsInstruction }
+type LNEG struct{ NoOperandsInstruction }
+type FNEG struct{ NoOperandsInstruction }
+type DNEG struct{ NoOperandsInstruction }
+
+// 加法指令实现
+
+func (this *IADD) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopInt()
+	var i2 = frame.operandStack.PopInt()
+	var add = i1 + i2
+	frame.operandStack.PushInt(add)
+}
+
+func (this *LADD) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopLong()
+	var i2 = frame.operandStack.PopLong()
+	var add = i1 + i2
+	frame.operandStack.PushLong(add)
+}
+
+func (this *FADD) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopFloat()
+	var i2 = frame.operandStack.PopFloat()
+	var add = i1 + i2
+	frame.operandStack.PushFloat(add)
+}
+
+func (this *DADD) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopDouble()
+	var i2 = frame.operandStack.PopDouble()
+	var add = i1 + i2
+	frame.operandStack.PushDouble(add)
+}
+
+// 减法指令实现
+
+func (this *ISUB) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopInt()
+	var i2 = frame.operandStack.PopInt()
+	var sub = i2 - i1
+	frame.operandStack.PushInt(sub)
+}
+
+func (this *LSUB) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopLong()
+	var i2 = frame.operandStack.PopLong()
+	var sub = i2 - i1
+	frame.operandStack.PushLong(sub)
+}
+
+func (this *DSUB) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopDouble()
+	var i2 = frame.operandStack.PopDouble()
+	var sub = i2 - i1
+	frame.operandStack.PushDouble(sub)
+}
+
+func (this *FSUB) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopFloat()
+	var i2 = frame.operandStack.PopFloat()
+	var sub = i2 - i1
+	frame.operandStack.PushFloat(sub)
+}
+
+// 乘法指令实现
+
+func (this *IMUL) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopInt()
+	var i2 = frame.operandStack.PopInt()
+	var res = i2 * i1
+	frame.operandStack.PushInt(res)
+}
+
+func (this *LMUL) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopLong()
+	var i2 = frame.operandStack.PopLong()
+	var res = i2 * i1
+	frame.operandStack.PushLong(res)
+}
+
+func (this *DMUL) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopDouble()
+	var i2 = frame.operandStack.PopDouble()
+	var res = i2 * i1
+	frame.operandStack.PushDouble(res)
+}
+
+func (this *FMUL) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopFloat()
+	var i2 = frame.operandStack.PopFloat()
+	var res = i2 * i1
+	frame.operandStack.PushFloat(res)
+}
+
+// 除法指令
+
+func (this *IDIV) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopInt()
+	var i2 = frame.operandStack.PopInt()
+	var res = i2 / i1
+	if i1 == 0 {
+		panic("java.lang.ArithmeticException: division by zero")
+	}
+	frame.operandStack.PushInt(res)
+}
+
+func (this *LDIV) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopLong()
+	var i2 = frame.operandStack.PopLong()
+	var res = i2 / i1
+	if i1 == 0 {
+		panic("java.lang.ArithmeticException: division by zero")
+	}
+	frame.operandStack.PushLong(res)
+}
+
+func (this *DDIV) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopDouble()
+	var i2 = frame.operandStack.PopDouble()
+	var res = i2 / i1
+	frame.operandStack.PushDouble(res)
+}
+
+func (this *FDIV) Execute(frame *JvmStackFrame) {
+	var i1 = frame.operandStack.PopFloat()
+	var i2 = frame.operandStack.PopFloat()
+	var res = i2 / i1
+	frame.operandStack.PushFloat(res)
+}
+
+// 求余运算
+
+func (this *DREM) Execute(frame *JvmStackFrame) {
+	var stack = frame.OperandStack()
+	var v2 = stack.PopDouble()
+	var v1 = stack.PopDouble()
+	var result = math.Mod(v1, v2)
+	stack.PushDouble(result)
+}
+
+func (this *FREM) Execute(frame *JvmStackFrame) {
+	var stack = frame.OperandStack()
+	var v2 = float64(stack.PopFloat())
+	var v1 = float64(stack.PopFloat())
+	var result = float32(math.Mod(v1, v2))
+	stack.PushFloat(result)
+}
+
+func (this *IREM) Execute(frame *JvmStackFrame) {
+	var stack = frame.OperandStack()
+	var v2 = stack.PopInt()
+	var v1 = stack.PopInt()
+	if v2 == 0 {
+		panic("java.lang.ArithmeticException: division by zero")
+	}
+	var result = v1 % v2
+	stack.PushInt(result)
+}
+
+func (this *LREM) Execute(frame *JvmStackFrame) {
+	var stack = frame.OperandStack()
+	var v2 = stack.PopLong()
+	var v1 = stack.PopLong()
+	if v2 == 0 {
+		panic("java.lang.ArithmeticException: division by zero")
+	}
+	var result = v1 % v2
+	stack.PushLong(result)
 }

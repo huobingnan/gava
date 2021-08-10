@@ -9,6 +9,7 @@ import (
 
 //lint:file-ignore ST1006  MYSTYLE
 //lint:file-ignore U1000  MYSTYLE
+// 文件主要定义了Java Class File的主要内容和解析实现
 
 // Java字节码读取
 type JavaByteCodeReader struct {

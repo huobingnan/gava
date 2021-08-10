@@ -33,6 +33,8 @@ type JvmStackFrame struct {
 	localVars    JvmLocalVars
 	operandStack *JvmOperandStack
 	next         *JvmStackFrame
+	thread       *JvmThread
+	nextPC       int
 }
 
 func NewJvmStackFrame(maxLocals uint, maxStack uint) *JvmStackFrame {
@@ -45,6 +47,8 @@ func NewJvmStackFrame(maxLocals uint, maxStack uint) *JvmStackFrame {
 func (this *JvmStackFrame) OperandStack() *JvmOperandStack { return this.operandStack }
 func (this *JvmStackFrame) LocalVars() JvmLocalVars        { return this.localVars }
 func (this *JvmStackFrame) Next() *JvmStackFrame           { return this.next }
+func (this *JvmStackFrame) Thread() *JvmThread             { return this.thread }
+func (this *JvmStackFrame) NextPC() int                    { return this.nextPC }
 
 type JvmSlot struct {
 	number    int32    // 存放数字
